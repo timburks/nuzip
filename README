@@ -1,0 +1,46 @@
+
+NuZip is a simple Objective-C wrapper around Gilles Vollant's minizip.
+It was originally created to allow Nu-based applications to unpack
+zip files on platforms where command-line zip and unzip tools 
+were not available.
+
+REQUIREMENTS
+
+To use the current build system, NuZip requires Nu and nuke.
+But it is also possible to add the NuZip sources to an
+existing Xcode project and adding -lz to the linker flags.
+	
+USAGE
+
+NuZip currently has a trivially simple interface, methods
+called "zip:" and "unzip:" that take a single argument,
+a string that would correspond to the command-line arguments
+given to the minizip and miniunz tools. The additional "-q"
+option disables all printing and should be specified in 
+embedded applications.
+
+AN EXAMPLE
+
+To unzip an archive named "MyArchive.zip" into 
+a directory called "my_directory", use the following call
+from Nu:
+
+(NuZip unzip:"MyArchive.zip -d my_directory")
+
+To make the same call from Objective-C, use the following:
+
+[NuZip unzip:@"MyArchive.zip -d my_directory"];
+
+BUILD AND TEST
+
+To build and test on a Mac OS X system with Nu installed,
+simply type "nuke test" in the project directory.
+
+AUTHOR
+
+The NuZip wrapper was written by Tim Burks but the core of the
+system, minizip, was created by Gilles Vollant.
+
+The NuZip wrapper is released under the Apache License, version 2.0.
+
+Copyright 2008, Neon Design Technology, Inc.
