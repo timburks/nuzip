@@ -52,7 +52,7 @@ int zip_main(int argc, char *argv[]);
 
 + (int) unzip:(NSString *) command
 {
-    NSArray *args = [command componentsSeparatedByString:@" "];
+    NSArray *args = [command componentsSeparatedByShell];
     int argc = [args count];
     char **argv = (char **) malloc ([args count] * sizeof (char *));
     int i;
