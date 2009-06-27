@@ -33,6 +33,21 @@ int unzip_main(int argc, char *argv[]);
 
 int zip_main(int argc, char *argv[]);
 
+@interface NSString (NZShellSplit)
+
+/*
+ * Split a string as a shell command line.
+ * Split the string using the common rules used by shells. It will use
+ * spaces as shell separators, unless those spaces are in a single or
+ * double quoted argument. It will also avoid using escaped quotes as
+ * the start or end of a quoted argument.
+ */
+- (NSArray *)componentsSeparatedByShell;
+
+@end
+
+
+
 @implementation NuZip
 
 + (int) unzip:(NSString *) command
@@ -70,6 +85,103 @@ int zip_main(int argc, char *argv[]);
 }
 
 @end
+
+
+
+static const unichar kSpace = 0x0020;
+static const unichar kDoubleQuote = 0x0022;
+static const unichar kSingleQuote = 0x0027;
+static const unichar kBackslash = 0x005C;
+
+@implementation NSString (NZShellSplit)
+
+- (NSArray *)componentsSeparatedByShell {
+  NSUInteger current = 0;
+  NSUInteger length = [self length];
+  NSMutableArray *arguments = [[NSMutableArray alloc] init];
+  unichar ch, endingQuote;
+  
+  while (current < length) {
+    NSMutableString *argument = [[NSMutableString alloc] init];
+    
+    while (current < length) {
+      ch = [self characterAtIndex:current++];
+      
+      CFMutableStringRef part = CFStringCreateMutable(NULL, 0);
+      if (ch == kDoubleQuote || ch == kSingleQuote) {
+        endingQuote = ch;
+        
+        while (current < length) {
+          ch = [self characterAtIndex:current++];
+          
+          if (ch == endingQuote) {
+            break;
+          } else if (ch == kBackslash) {
+            if (current < length) { // Slash at the end of the string?
+              ch = [self characterAtIndex:current++];
+            }
+            CFStringAppendCharacters(part, &ch, 1);
+          } else {
+            CFStringAppendCharacters(part, &ch, 1);
+          }
+        }
+        
+        if (current >= length && ch != endingQuote) {
+          NSString *reason =
+            [NSString stringWithFormat:@"Unmatched quote <%C>",
+              endingQuote];
+          @throw [NSException exceptionWithName:NSInvalidArgumentException
+                                        reason:reason
+                                      userInfo:nil];
+        }
+      } else if (ch == kBackslash) {
+        if (current >= length) { // Slash at the end of the string
+          ch = kBackslash;
+        } else {
+          ch = [self characterAtIndex:current++];
+        }
+        CFStringAppendCharacters(part, &ch, 1);
+      } else if (ch != kSpace && ch != kBackslash &&
+                 ch != kDoubleQuote && ch != kSingleQuote) {
+        CFStringAppendCharacters(part, &ch, 1);
+        while (current < length) {
+          ch = [self characterAtIndex:current++];
+          if (ch == kSpace || ch == kBackslash ||
+              ch == kDoubleQuote || ch == kSingleQuote) {
+            current--; // Otherwise we will jump over the character.
+            break;
+          } else {
+            CFStringAppendCharacters(part, &ch, 1);
+          }
+        }
+      } else { // it has to be a space (or more), ignore them
+        while (current < length &&
+               ((ch = [self characterAtIndex:current++]) == kSpace)) {
+          // do nothing
+        }
+        if (current < length) {
+          current--; // Unread last read character.
+        }
+        CFRelease(part);
+        break;
+      }
+      
+      [argument appendString:(NSString *)part];
+      CFRelease(part);
+    }
+    
+    [arguments addObject:[[argument copy] autorelease]];
+    [argument release];
+  }
+  
+  NSArray *returnValue = [arguments copy];
+  [arguments release];
+  return [returnValue autorelease];
+}
+
+@end
+
+
 
 /*
    miniunz.c
